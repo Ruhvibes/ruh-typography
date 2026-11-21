@@ -75,7 +75,11 @@
     </div>
     <div id="kin-type-box">
       <textarea id="kin-words" rows="4" placeholder="Type or paste the lyrics / script here…"></textarea>
-      <div class="hint">Words are auto-synced across the audio — timing is estimated from word length. For real audio-aligned timing, use Auto Lyrics Sync.</div>
+      <div class="row">
+        <button class="btn-primary" onclick="autoSyncKinetic()">🎵 Auto Sync to audio</button>
+      </div>
+      <div id="kin-sync-status" class="info">Pick an audio file and type the lyrics — words auto-sync to the audio's vocal onsets.</div>
+      <div class="hint">Words follow the real audio (vocal onsets), not equal spacing. If no clear onsets are found, estimated timing is used instead.</div>
     </div>
     <div id="kin-live-box" hidden>
       <button class="btn" id="kin-stt-btn" onclick="toggleStt()">🎙 Start listening</button>

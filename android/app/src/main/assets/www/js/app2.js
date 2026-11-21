@@ -172,14 +172,42 @@ function previewSync(){
 }
 function applySyncToTypography(){
   if(!lyrWords.length) return toast('Sync the lyrics first');
-  kinBuffer=lyrBuffer; kinWords=lyrWords.map(w=>({...w}));
+  kinBuffer=lyrBuffer; kinWords=lyrWords.map(w=>({...w})); kinSynced=true;
   const p=$('lyr-player');
   if(p && p.src){ const kp=$('kin-player'); kp.src=p.src; kp.style.display='block'; }
   $('kin-words').value=lyrWords.map(w=>w.text).join(' ');
+  const ks=$('kin-sync-status');
+  if(ks) ks.textContent=`Synced ${lyrWords.length} words to vocal onsets — words now follow the audio.`;
   $('lyr-apply-status').textContent='Applied — open Typography Studio to style and export it.';
   toast('Synced lyrics applied to Typography Studio');
   setTimeout(()=>openTool('kinetic'), 600);
 }
+
+/* ---------- TYPOGRAPHY AUTO-SYNC (the fix) ---------- */
+/* Sync the typed lyrics in the Typography screen itself to the audio's
+   vocal onsets — so words follow the actual song, not estimates. */
+function autoSyncKinetic(silent){
+  const st=$('kin-sync-status');
+  if(!kinBuffer){ if(!silent) toast('Pick an audio file first'); return false; }
+  rebuildKinWords();
+  if(!kinWords.length){ if(!silent) toast('Type some lyrics first'); return false; }
+  const aligned=alignWordsToOnsets(kinWords, kinBuffer);
+  const avg=aligned.reduce((a,w)=>a+(w.conf||0),0)/aligned.length;
+  const hasOnsets=aligned.some(w=>(w.conf||0)>=0.8);
+  kinWords=aligned; kinSynced=true;
+  if(st) st.textContent = hasOnsets
+    ? `Synced ${aligned.length} words to vocal onsets · avg confidence ${(avg*100).toFixed(0)}% — words now follow the audio.`
+    : `No clear vocal onsets found in this audio — using estimated timing. For manual timing, use Auto Lyrics Sync.`;
+  drawKineticPreview();
+  return true;
+}
+/* Re-sync automatically while the user types (debounced, so typing stays fast) */
+let kinSyncTimer=null;
+function scheduleKinAutoSync(){
+  clearTimeout(kinSyncTimer);
+  kinSyncTimer=setTimeout(()=>{ if(kinBuffer && kinMode!=='live') autoSyncKinetic(true); }, 800);
+}
+$('kin-words').addEventListener('input', scheduleKinAutoSync);
 
 /* ---------- AUDIO STUDIO extras ---------- */
 let audEl=null, audSpeed=1;
@@ -316,6 +344,7 @@ async function exportVideoEdit(){
     const words=wordsFromText(($('ved-words').value||'').trim(), en-s);
     const bitrate=vedRes==='4k'?25000000:vedRes==='720'?5000000:12000000;
     const blob=await renderVideoEdit(canvas, v, s, en, vedSpeed, filter, words, bitrate);
+    if(!blob || !blob.size) throw new Error('render produced an empty video — please try again');
     window._saveStatusEl=st;
     const name='RuhTypography-VideoEdit-'+Date.now()+'.webm';
     await saveBlob(blob, name, 'video/webm');
@@ -324,7 +353,7 @@ async function exportVideoEdit(){
     $('ved-share-row').hidden=false;
   }catch(err){ st.textContent='Video export failed: '+err.message; }
 }
-async function renderVideoEdit(canvas, videoEl, start, end, speed, filter, words, bitrate){
+async function renderVideoEdit(canvas, videoEl, start, end, speed, filter, words, bitrate, retried){
   const ctx=audioCtx();
   try{ await ctx.resume(); }catch(e){}
   const streamDest=getExportDest();
@@ -337,25 +366,47 @@ async function renderVideoEdit(canvas, videoEl, start, end, speed, filter, words
   const done=new Promise(res=>{ rec.onstop=res; });
   if(!videoEl._tfSrc){ videoEl._tfSrc=ctx.createMediaElementSource(videoEl); videoEl._tfSrc.connect(streamDest); videoEl._tfSrc.connect(ctx.destination); }
   const W=canvas.width, H=canvas.height, c2=canvas.getContext('2d');
-  videoEl.currentTime=start; videoEl.playbackRate=speed;
+  videoEl.playbackRate=speed;
+  // Land the seek BEFORE the recorder starts — otherwise the first frame
+  // can still show the pre-seek position (near the end) and the render
+  // ends immediately with a 0-byte video. Also guard the first frames.
+  const seekT0=performance.now();
+  await awaitSeek(videoEl, start);
+  // Prime the canvas so the capture stream has a real frame from the start.
+  c2.filter=filter;
+  const vw0=videoEl.videoWidth||W, vh0=videoEl.videoHeight||H;
+  const sc0=Math.max(W/vw0, H/vh0);
+  c2.drawImage(videoEl, (W-vw0*sc0)/2, (H-vh0*sc0)/2, vw0*sc0, vh0*sc0);
+  c2.filter='none';
   rec.start(250);
   await videoEl.play().catch(()=>{});
   await new Promise((resolve)=>{
+    let frames=0;
+    const watchdog=setTimeout(resolve, Math.max(15000, (end-start)/speed*1000+15000));
     const draw=()=>{
       const t=videoEl.currentTime||0;
+      frames++;
       c2.filter=filter;
       const vw=videoEl.videoWidth||W, vh=videoEl.videoHeight||H;
       const sc=Math.max(W/vw, H/vh), dw=vw*sc, dh=vh*sc;
       c2.drawImage(videoEl, (W-dw)/2, (H-dh)/2, dw, dh);
       c2.filter='none';
       if(words && words.length) drawCaptionText(canvas, words.map(w=>({...w, start:w.start+start, end:w.end+start})), t, 'b');
-      if(t>=end || videoEl.ended) resolve(); else requestAnimationFrame(draw);
+      if((t>=end || videoEl.ended) && frames>2){ clearTimeout(watchdog); resolve(); }
+      else requestAnimationFrame(draw);
     };
     requestAnimationFrame(draw);
   });
   try{ videoEl.pause(); }catch(e){}
   rec.stop(); await done;
-  return new Blob(chunks, { type: rec.mimeType || 'video/webm' });
+  const blob=new Blob(chunks, { type: rec.mimeType || 'video/webm' });
+  // A 0-byte render must never reach the user: the encoder sometimes
+  // delivers no chunks on the first attempt — retry once with a fresh
+  // recorder instead of saving an empty file.
+  if(blob.size===0 && !retried){
+    return renderVideoEdit(canvas, videoEl, start, end, speed, filter, words, bitrate, true);
+  }
+  return blob;
 }
 
 /* caption text only (no background fill) — for the video editor, which

@@ -212,6 +212,7 @@ function setKinRes(r){ kinRes=r; $('kin-res-720').classList.toggle('on',r==='720
 function kinExportSize(){ if(kinFormat==='v'){ return kinRes==='4k'?[2160,3840]:kinRes==='720'?[720,1280]:[1080,1920]; } return kinRes==='4k'?[3840,2160]:kinRes==='720'?[1280,720]:[1920,1080]; }
 function kinBitrate(){ return kinRes==='4k'?25000000:kinRes==='720'?5000000:12000000; }
 let kinSegments=[], kinListening=false, kinSttBase=0;
+let kinSynced=false; // true when kinWords carry real onset-aligned timings
 let previewRAF=null, previewAudioEl=null;
 
 function setKinMode(m){
@@ -242,6 +243,8 @@ $('kin-audio').addEventListener('change', async e=>{
     $('kin-audio-info').textContent = `${f.name} · ${fmtTime(kinBuffer.duration)} · ${(f.size/1048576).toFixed(1)} MB`;
     const p=$('kin-player'); p.src=URL.createObjectURL(f); p.style.display='block';
     rebuildKinWords(); drawKineticPreview();
+    // Auto-sync the words to the audio's vocal onsets as soon as it loads
+    if(window.autoSyncKinetic && $('kin-words').value.trim()) setTimeout(()=>autoSyncKinetic(true), 150);
     toast('Audio loaded');
   }catch(err){ $('kin-audio-info').textContent='Could not read this audio file: '+err.message; }
 });
@@ -254,8 +257,17 @@ function rebuildKinWords(){
   const dur=kinBuffer?kinBuffer.duration:10;
   if(kinMode==='live'){
     kinWords=wordsFromSegments(kinSegments);
+    kinSynced=false;
   } else {
-    kinWords=wordsFromText(displayWords(raw,lang), dur);
+    const base=wordsFromText(displayWords(raw,lang), dur);
+    // If words were auto-synced to the audio and the text is unchanged,
+    // keep the real aligned timings — never silently fall back to estimates.
+    if(kinSynced && kinBuffer && kinWords.length===base.length && base.length){
+      kinWords=kinWords.map((w,i)=>({...w, text:base[i].text}));
+    } else {
+      kinWords=base;
+      kinSynced=false;
+    }
   }
 }
 function kinThemeObj(){ return THEMES[kinTheme]; }
@@ -406,6 +418,7 @@ async function exportKinetic(){
     let blob;
     try{ blob=await renderTypographyVideo(canvas, kinWords, kinBuffer, kinThemeObj(), kinFormat, null, kinBitrate()); }
     catch(e){ if(kinRes==='4k'){ st.textContent='4K is not supported on this device — falling back to 1080p…'; canvas.width=1080; canvas.height=kinFormat==='v'?1920:1080; blob=await renderTypographyVideo(canvas, kinWords, kinBuffer, kinThemeObj(), kinFormat, null, 12000000); } else throw e; }
+    if(!blob || !blob.size) throw new Error('render produced an empty video — please try again');
     window._saveStatusEl=st;
     const name='RuhTypography-Kinetic-'+Date.now()+'.webm';
     await saveBlob(blob, name, 'video/webm');
@@ -423,7 +436,20 @@ function getExportDest(){
   if(!exportDest) exportDest=audioCtx().createMediaStreamDestination();
   return exportDest;
 }
-async function renderTypographyVideo(canvas, words, buffer, theme, format, mediaEl, bitrate){
+/* Await a media-element seek: setting currentTime is async, and starting
+   the recorder before the seek lands can end the render on the first frame
+   (0-byte video) when the element was sitting at the end. Never hangs:
+   the timeout resolves if the seek event never fires. */
+function awaitSeek(el, t){
+  return new Promise(res=>{
+    let done=false;
+    const fin=()=>{ if(!done){ done=true; res(); } };
+    try{ el.addEventListener('seeked', fin, {once:true}); }catch(e){}
+    try{ el.currentTime=t; }catch(e){}
+    setTimeout(fin, 1500);
+  });
+}
+async function renderTypographyVideo(canvas, words, buffer, theme, format, mediaEl, bitrate, retried){
   const ctx=audioCtx();
   // The context must be running before we start: if it is still suspended,
   // currentTime never advances and the recorder captures nothing.
@@ -441,7 +467,12 @@ async function renderTypographyVideo(canvas, words, buffer, theme, format, media
   const done=new Promise(res=>{ rec.onstop=res; });
   const isVideo = !!(mediaEl && mediaEl.tagName==='VIDEO');
   const dur=buffer?buffer.duration:(mediaEl?(mediaEl.duration||10):10);
+  // Land the video at 0 BEFORE the recorder starts (see awaitSeek).
+  if(mediaEl) await awaitSeek(mediaEl, 0);
   let src=null;
+  // Prime the canvas so the capture stream has a real frame from the start.
+  if(isVideo){ drawCaptions(canvas, mediaEl, capWords, 0, capPos); }
+  else drawKinetic(canvas, words, 0, theme, format);
   rec.start(250);
   const t0=ctx.currentTime+0.1;
   if(buffer){
@@ -454,16 +485,21 @@ async function renderTypographyVideo(canvas, words, buffer, theme, format, media
       mediaEl._tfSrc.connect(streamDest);
       mediaEl._tfSrc.connect(ctx.destination);
     }
-    mediaEl.currentTime=0;
     mediaEl.play().catch(()=>{});
   }
   await new Promise((resolve)=>{
+    let frames=0;
+    // Watchdog: never hang forever if playback stalls (generous: duration + 15s).
+    const watchdog=setTimeout(resolve, Math.max(15000, dur*1000+15000));
     const draw=()=>{
       const t = mediaEl ? (mediaEl.currentTime||0) : Math.max(0, ctx.currentTime-t0);
       const total = mediaEl ? (mediaEl.duration||dur) : dur;
+      frames++;
       if(isVideo){ drawCaptions(canvas, mediaEl, capWords, t, capPos); }
       else drawKinetic(canvas, words, t, theme, format);
-      if(t>=total || (mediaEl && mediaEl.ended)){ resolve(); } else requestAnimationFrame(draw);
+      // frames>2: the first frame can still show the pre-seek position.
+      if((t>=total || (mediaEl && mediaEl.ended)) && frames>2){ clearTimeout(watchdog); resolve(); }
+      else requestAnimationFrame(draw);
     };
     requestAnimationFrame(draw);
   });
@@ -471,7 +507,14 @@ async function renderTypographyVideo(canvas, words, buffer, theme, format, media
   if(mediaEl){ try{ mediaEl.pause(); }catch(e){} }
   rec.stop();
   await done;
-  return new Blob(chunks, { type: rec.mimeType || 'video/webm' });
+  const blob=new Blob(chunks, { type: rec.mimeType || 'video/webm' });
+  // A 0-byte render must never reach the user: the encoder sometimes
+  // delivers no chunks on the first attempt — retry once with a fresh
+  // recorder instead of saving an empty file.
+  if(blob.size===0 && !retried){
+    return renderTypographyVideo(canvas, words, buffer, theme, format, mediaEl, bitrate, true);
+  }
+  return blob;
 }
 
 /* ================= LIVE TRANSCRIBE (mic) ================= */
@@ -637,6 +680,7 @@ async function exportCaptions(){
     const canvas=document.createElement('canvas');
     canvas.width=540; canvas.height=960;
     const blob=await renderTypographyVideo(canvas, capWords, null, THEMES[capTheme], 'v', v);
+    if(!blob || !blob.size) throw new Error('render produced an empty video — please try again');
     window._saveStatusEl=st;
     const name='RuhTypography-Captions-'+Date.now()+'.webm';
     await saveBlob(blob, name, 'video/webm');
@@ -718,6 +762,7 @@ async function exportScript(){
     const canvas=document.createElement('canvas');
     canvas.width=scrFormat==='v'?540:960; canvas.height=scrFormat==='v'?960:540;
     const blob=await renderTypographyVideo(canvas, scrWords, null, THEMES[scrTheme], scrFormat, scrAudioEl);
+    if(!blob || !blob.size) throw new Error('render produced an empty video — please try again');
     window._saveStatusEl=st;
     const name='RuhTypography-Script-'+Date.now()+'.webm';
     await saveBlob(blob, name, 'video/webm');

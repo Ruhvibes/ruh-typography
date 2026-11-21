@@ -125,9 +125,16 @@ function check(name, ok, detail) {
     $('ved-words').value = 'hello world test';
     $('ved-filter').value = 'warm';
     await exportVideoEdit();
-    return { dur: vedDur, saved: window.__saved.filter(s => s.name.includes('VideoEdit')) };
+    const first = window.__saved.filter(s => s.name.includes('VideoEdit'));
+    // the race that used to make 0-byte videos: preview/seek to the very end,
+    // then export again — the render must still produce a real video
+    v.currentTime = Math.max(0, vedDur - 0.05);
+    await new Promise(r => setTimeout(r, 300));
+    await exportVideoEdit();
+    const second = window.__saved.filter(s => s.name.includes('VideoEdit'));
+    return { dur: vedDur, first: first.map(s => s.size), second: second.map(s => s.size) };
   });
-  check('video editor export()', ved.saved.length === 1 && ved.saved[0].size > 5000, JSON.stringify({ dur: ved.dur, saved: ved.saved }));
+  check('video editor export()', ved.first.length === 1 && ved.first[0] > 5000 && ved.second.length === 2 && ved.second[1] > 5000, JSON.stringify(ved));
 
   // 5. Audio processing: gain + fade + normalize actually change samples
   const proc = await page.evaluate(() => {
@@ -238,6 +245,45 @@ function check(name, ok, detail) {
     return lit;
   });
   check('mixed Hindi/English/Urdu render', mix > 50, 'lit: ' + mix);
+
+  // 13. Typography auto-sync: typed words snap to the audio's onsets
+  const ty = await page.evaluate(() => {
+    const ctx = audioCtx();
+    const buf = ctx.createBuffer(1, 8 * 44100, 44100);
+    const d = buf.getChannelData(0);
+    for (let k = 0; k < 16; k++) {
+      const at = Math.floor(k * 0.5 * 44100);
+      for (let j = 0; j < 2000; j++) d[at + j] = Math.sin(2 * Math.PI * 1000 * j / 44100) * 0.8 * (1 - j / 2000);
+    }
+    kinBuffer = buf; kinMode = 'type';
+    $('kin-words').value = 'dil mera pyar mohabbat jaan chand';
+    rebuildKinWords();
+    const before = kinWords.map(w => w.start);
+    const ok = autoSyncKinetic();
+    const after = kinWords.map(w => w.start);
+    const snapped = kinWords.filter(w => Math.abs(w.start % 0.5) < 0.12 || Math.abs((w.start % 0.5) - 0.5) < 0.12).length;
+    const status = $('kin-sync-status').textContent;
+    // rebuild (as a redraw/language change would) must NOT clobber aligned timings
+    rebuildKinWords();
+    const kept = kinSynced && kinWords.every((w, i) => Math.abs(w.start - after[i]) < 0.001);
+    // editing the text (different word count) drops back to estimates, then re-syncs
+    $('kin-words').value = 'dil mera pyar mohabbat';
+    rebuildKinWords();
+    const dropped = !kinSynced;
+    autoSyncKinetic();
+    const resynced = kinSynced && kinWords.length === 4;
+    return { ok, snapped, before: before.map(x => x.toFixed(2)), after: after.map(x => x.toFixed(2)), status, kept, dropped, resynced };
+  });
+  check('typography auto-sync to audio', ty.ok && ty.snapped >= 4 && ty.kept && ty.dropped && ty.resynced && /Synced 6 words/.test(ty.status), JSON.stringify(ty));
+
+  // 14. Apply from Lyrics Sync survives a rebuild in Typography
+  const ap = await page.evaluate(() => {
+    lyrWords = [{ text: 'a', start: 0.5, end: 0.9, conf: 1 }, { text: 'b', start: 1.0, end: 1.4, conf: 1 }];
+    applySyncToTypography();
+    rebuildKinWords();
+    return { synced: kinSynced, starts: kinWords.map(w => w.start) };
+  });
+  check('lyrics apply survives rebuild', ap.synced && ap.starts[0] === 0.5 && ap.starts[1] === 1.0, JSON.stringify(ap));
 
   check('no console/page errors', errors.filter(e => !/ERR_TUNNEL_CONNECTION_FAILED|ERR_NAME_NOT_RESOLVED/.test(e)).length === 0, errors.slice(0, 3).join(' | '));
 
