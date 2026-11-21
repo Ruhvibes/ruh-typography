@@ -231,7 +231,7 @@ function setKinFormat(f){
 }
 function setKinEffect(v){ kinEffect=v; drawKineticPreview(); }
 function setKinLayout(v){ kinLayout=v; $('kin-lay-s').classList.toggle('on',v==='spotlight'); $('kin-lay-k').classList.toggle('on',v==='karaoke'); drawKineticPreview(); }
-function setKinBg(v){ kinBg=v; $('kin-bg-g').classList.toggle('on',v==='gradient'); $('kin-bg-a').classList.toggle('on',v==='glow'); $('kin-bg-s').classList.toggle('on',v==='solid'); drawKineticPreview(); }
+function setKinBg(v){ kinBg=v; if(v!=='glow') window.__visParticles=false; $('kin-bg-g').classList.toggle('on',v==='gradient'); $('kin-bg-a').classList.toggle('on',v==='glow'); $('kin-bg-s').classList.toggle('on',v==='solid'); drawKineticPreview(); }
 function setKinFont(v){ kinFont=v; $('kin-font-sans').classList.toggle('on',v==='sans'); $('kin-font-serif').classList.toggle('on',v==='serif'); $('kin-font-mono').classList.toggle('on',v==='mono'); drawKineticPreview(); }
 function kinFontFamily(){ return FONTS[kinFont]||FONTS.sans; }
 function setCapSize(v){ capSize=v; $('cap-size-s').classList.toggle('on',v==='s'); $('cap-size-m').classList.toggle('on',v==='m'); $('cap-size-l').classList.toggle('on',v==='l'); drawCaptionsPreview(); }
@@ -829,7 +829,9 @@ function processAudioBuffer(buf, gainPct, fadeIn, fadeOut, normalize){
   let peak=0;
   if(normalize){ for(let ch=0;ch<buf.numberOfChannels;ch++){ const d=buf.getChannelData(ch); for(let i=0;i<d.length;i+=8){ const a=Math.abs(d[i]); if(a>peak) peak=a; } } }
   const norm = normalize && peak>0 ? 0.95/peak : 1;
-  const fadeLen=Math.min(buf.length, Math.floor(buf.sampleRate*1.5));
+  // Fades must never overlap: cap each fade at half the buffer, otherwise
+  // the middle of a short clip gets attenuated twice.
+  const fadeLen=Math.min(Math.floor(buf.length/2), Math.floor(buf.sampleRate*1.5));
   for(let ch=0;ch<buf.numberOfChannels;ch++){
     const d=buf.getChannelData(ch);
     for(let i=0;i<d.length;i++){

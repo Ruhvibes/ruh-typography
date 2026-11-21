@@ -553,7 +553,8 @@ function applyVisualToTypography(){
   const idx=THEMES.findIndex(t=>t.hi===m.hi);
   if(idx>=0){ kinTheme=idx; renderThemes('kin-themes', idx, i=>{ kinTheme=i; }); }
   kinBg='glow'; kinEffect='bounce';
-  $('vis-apply-status').textContent=`${visMood} visual applied — glow background + bounce effect in Typography Studio.`;
+  window.__visParticles=true; // mood particles now draw into typography exports
+  $('vis-apply-status').textContent=`${visMood} visual applied — glow background + bounce effect + mood particles in Typography Studio.`;
   toast('Visual applied to Typography Studio');
 }
 

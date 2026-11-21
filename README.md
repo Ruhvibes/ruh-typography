@@ -39,7 +39,7 @@ By **Hasnain Khan** (ruhvibes) · Instagram [@ruhvibes1](https://instagram.com/r
 Android app (WebView + native bridge for text-to-speech, speech recognition, file saving, sharing and JS dialogs).
 
 - Package: `com.ruhvibes.typographystudio`
-- Version: 1.0 (versionCode 1)
+- Version: 1.0 (versionCode 2)
 - Min SDK 26, target SDK 34
 - Keystore: per-app, kept out of the repo (`keystore/` is gitignored)
 
