@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ruh Typography Studio — Powered by Hasnain</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="logo"><img src="logo.png" alt="RUH" style="width:46px;height:46px;border-radius:13px"></div>
+  <div class="brand">
+    <div class="brand-name">Ruh Typography Studio</div>
+    <div class="brand-sub">Powered by Hasnain · @ruhvibes1</div>
+  </div>
+  <div class="ver">1.0</div>
+</header>
+
+<main id="home" class="screen active">
+  <section class="hero">
+    <img src="logo.png" alt="Ruh Typography Studio" class="hero-logo">
+    <h1>Make words move.</h1>
+    <p>Lyrics, typography, mashups and video — one studio, on your phone. Free, no login, no subscription.</p>
+    <div class="row">
+      <button class="btn-primary" onclick="newProject()">＋ New Project</button>
+      <button class="btn" onclick="openTool('projects')">My Projects</button>
+    </div>
+  </section>
+
+  <div class="card" style="margin-bottom:14px">
+    <input type="text" id="home-search" placeholder="Search studios, templates, projects…" oninput="homeSearch(this.value)">
+  </div>
+
+  <div class="step" style="margin-bottom:10px">Studios</div>
+  <section class="grid2" id="home-grid">
+    <div class="tile" onclick="openTool('kinetic')"><div class="ti">✒️</div><b>Typography Studio</b><span>Kinetic words from your audio</span></div>
+    <div class="tile" onclick="openTool('lyrics')"><div class="ti">🎙️</div><b>Auto Lyrics Sync</b><span>Real audio-aligned word timings</span></div>
+    <div class="tile" onclick="openTool('audio')"><div class="ti">🎵</div><b>Audio Studio</b><span>Waveform, trim, merge, BPM</span></div>
+    <div class="tile" onclick="openTool('mashup')"><div class="ti">🎧</div><b>AI Mashup Studio</b><span>Two songs, one mix</span></div>
+    <div class="tile" onclick="openTool('video')"><div class="ti">🎬</div><b>Video Editor</b><span>Trim, speed, captions, filters</span></div>
+    <div class="tile" onclick="openTool('captions')"><div class="ti">💬</div><b>Auto Captions</b><span>Captions burned onto video</span></div>
+    <div class="tile" onclick="openTool('emoji')"><div class="ti">😍</div><b>Emoji Studio</b><span>Mood-matched emojis on lyrics</span></div>
+    <div class="tile" onclick="openTool('gif')"><div class="ti">🖼️</div><b>GIF Studio</b><span>Local GIF overlays</span></div>
+    <div class="tile" onclick="openTool('visual')"><div class="ti">✨</div><b>AI Visual Generator</b><span>Mood backgrounds &amp; visualizer</span></div>
+    <div class="tile" onclick="openTool('templates')"><div class="ti">📚</div><b>Templates Library</b><span>Romantic, Sad, Lofi, Neon…</span></div>
+    <div class="tile" onclick="openTool('script')"><div class="ti">▶</div><b>Script to Video</b><span>Type it, hear it, watch it move</span></div>
+    <div class="tile" onclick="openTool('voice')"><div class="ti">🔊</div><b>Text to Voice</b><span>Type it, save it as audio</span></div>
+    <div class="tile" onclick="openTool('assistant')"><div class="ti">🤖</div><b>AI Assistant</b><span>Tell it what to do</span></div>
+    <div class="tile" onclick="openTool('gateway')"><div class="ti">🔑</div><b>RUH AI Gateway</b><span>Your keys, your providers</span></div>
+    <div class="tile" onclick="openTool('history')"><div class="ti">📤</div><b>Export History</b><span>Everything you exported</span></div>
+    <div class="tile" onclick="openTool('settings')"><div class="ti">⚙️</div><b>Settings</b><span>Language, export, about</span></div>
+  </section>
+
+  <div class="step" style="margin:18px 0 10px">Recent Projects</div>
+  <div id="home-recent"></div>
+
+  <footer>Free forever · No login · No subscription<br>By <span class="gold">Hasnain Khan</span> (ruhvibes) · Instagram @ruhvibes1</footer>
+</main>
+
+<!-- ============ KINETIC TYPOGRAPHY ============ -->
+<main id="tool-kinetic" class="screen">
+  <div class="tool-head"><button class="back" onclick="goHome()">‹</button><h2>Typography Studio</h2></div>
+  <div class="card">
+    <div class="step">1 · Pick an audio file</div>
+    <input type="file" id="kin-audio" accept="audio/*" hidden>
+    <button class="btn" onclick="document.getElementById('kin-audio').click()">Pick audio (MP3 · WAV · M4A · AAC · FLAC)</button>
+    <div id="kin-audio-info" class="info">No audio picked yet.</div>
+    <audio id="kin-player" controls style="width:100%;display:none"></audio>
+  </div>
+  <div class="card">
+    <div class="step">2 · Get the words</div>
+    <div class="seg">
+      <button id="kin-mode-type" class="seg-btn on" onclick="setKinMode('type')">Type words</button>
+      <button id="kin-mode-live" class="seg-btn" onclick="setKinMode('live')">Live transcribe (mic)</button>
+    </div>
+    <div id="kin-type-box">
+      <textarea id="kin-words" rows="4" placeholder="Type or paste the lyrics / script here…"></textarea>
+      <div class="hint">Words are auto-synced across the audio — timing is estimated from word length. For real audio-aligned timing, use Auto Lyrics Sync.</div>
+    </div>
+    <div id="kin-live-box" hidden>
+      <button class="btn" id="kin-stt-btn" onclick="toggleStt()">🎙 Start listening</button>
+      <div id="kin-stt-status" class="info">Speak or play audio near the mic — words appear here as they are recognised.</div>
+      <div id="kin-stt-text" class="transcript"></div>
+    </div>
+    <label class="lbl">Language</label>
+    <select id="kin-lang">
+      <option value="en-IN">English</option>
+      <option value="hi-IN-roman" selected>Hinglish (Hindi → Roman)</option>
+      <option value="hi-IN">Hindi (Devanagari)</option>
+      <option value="ur-PK">Urdu</option>
+      <option value="en-US">English (US)</option>
+    </select>
+  </div>
+  <div class="card">
+    <div class="step">3 · Style it</div>
+    <label class="lbl">Canvas</label>
+    <div class="seg">
+      <button id="kin-fmt-v" class="seg-btn on" onclick="setKinFormat('v')">Vertical 9:16</button>
+      <button id="kin-fmt-h" class="seg-btn" onclick="setKinFormat('h')">Landscape 16:9</button>
+    </div>
+    <label class="lbl">Theme</label>
+    <div id="kin-themes" class="themes"></div>
+    <label class="lbl">Word effect</label>
+    <select id="kin-effect" onchange="setKinEffect(this.value)">
+      <option value="pop" selected>Pop</option>
+      <option value="slide">Slide up</option>
+      <option value="fade">Fade</option>
+      <option value="zoom">Zoom out</option>
+      <option value="bounce">Bounce</option>
+      <option value="typewriter">Typewriter</option>
+    </select>
+    <label class="lbl">Layout</label>
+    <div class="seg">
+      <button id="kin-lay-s" class="seg-btn on" onclick="setKinLayout('spotlight')">Spotlight</button>
+      <button id="kin-lay-k" class="seg-btn" onclick="setKinLayout('karaoke')">Karaoke line</button>
+    </div>
+    <label class="lbl">Background</label>
+    <div class="seg">
+      <button id="kin-bg-g" class="seg-btn on" onclick="setKinBg('gradient')">Gradient</button>
+      <button id="kin-bg-a" class="seg-btn" onclick="setKinBg('glow')">Animated glow</button>
+      <button id="kin-bg-s" class="seg-btn" onclick="setKinBg('solid')">Solid</button>
+    </div>
+    <label class="lbl">Font</label>
+    <div class="seg">
+      <button id="kin-font-sans" class="seg-btn on" onclick="setKinFont('sans')">Sans</button>
+      <button id="kin-font-serif" class="seg-btn" onclick="setKinFont('serif')">Serif</button>
+      <button id="kin-font-mono" class="seg-btn" onclick="setKinFont('mono')">Mono</button>
+    </div>
+    <div class="row">
+      <label class="chk"><input type="checkbox" id="kin-shadow" checked onchange="drawKineticPreview()"> Word shadow</label>
+      <label class="chk"><input type="checkbox" id="kin-bar" checked onchange="drawKineticPreview()"> Progress bar</label>
+    </div>
+    <label class="lbl">Preview</label>
+    <canvas id="kin-canvas" width="540" height="960"></canvas>
+    <div class="row">
+      <button class="btn" onclick="previewKinetic()">▶ Preview with audio</button>
+      <button class="btn" onclick="stopPreview()">■ Stop</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="step">4 · Export video</div>
+    <label class="lbl">Resolution</label>
+    <div class="seg">
+      <button id="kin-res-720" class="seg-btn" onclick="setKinRes('720')">720p</button>
+      <button id="kin-res-1080" class="seg-btn on" onclick="setKinRes('1080')">1080p</button>
+      <button id="kin-res-4k" class="seg-btn" onclick="setKinRes('4k')">4K</button>
+    </div>
+    <div class="hint">4K renders at 3840×2160 where your device and codec support it — it is slower and uses more memory. If 4K fails, 1080p is used.</div>
+    <button class="btn-primary" onclick="exportKinetic()">Export video</button>
+    <div id="kin-export-status" class="info"></div>
+    <div class="row" id="kin-share-row" hidden>
+      <button class="btn" onclick="shareLast()">Share video</button>
+    </div>
+  </div>
+</main>
+
+<!-- ============ AUTO CAPTIONS ============ -->
+<main id="tool-captions" class="screen">
+  <div class="tool-head"><button class="back" onclick="goHome()">‹</button><h2>Auto Captions</h2></div>
+  <div class="card">
+    <div class="step">1 · Pick a video</div>
+    <input type="file" id="cap-video" accept="video/*" hidden>
+    <button class="btn" onclick="document.getElementById('cap-video').click()">Pick video</button>
+    <div id="cap-video-info" class="info">No video picked yet.</div>
+    <video id="cap-player" controls playsinline style="width:100%;display:none"></video>
+  </div>
+  <div class="card">
+    <div class="step">2 · Get the words</div>
+    <div class="seg">
+      <button id="cap-mode-type" class="seg-btn on" onclick="setCapMode('type')">Type words</button>
+      <button id="cap-mode-live" class="seg-btn" onclick="setCapMode('live')">Live transcribe (mic)</button>
+    </div>
+    <div id="cap-type-box">
+      <textarea id="cap-words" rows="4" placeholder="Type or paste the spoken words here…"></textarea>
+      <div class="hint">Words are auto-synced across the video — timing is estimated from word length.</div>
+    </div>
+    <div id="cap-live-box" hidden>
+      <button class="btn" id="cap-stt-btn" onclick="toggleSttCap()">🎙 Start listening</button>
+      <div id="cap-stt-text" class="transcript"></div>
+    </div>
+    <label class="lbl">Language</label>
+    <select id="cap-lang">
+      <option value="en-IN">English</option>
+      <option value="hi-IN-roman" selected>Hinglish (Hindi → Roman)</option>
+      <option value="hi-IN">Hindi (Devanagari)</option>
+      <option value="ur-PK">Urdu</option>
+      <option value="en-US">English (US)</option>
+    </select>
+  </div>
+  <div class="card">
+    <div class="step">3 · Caption style</div>
+    <label class="lbl">Position</label>
+    <div class="seg">
+      <button id="cap-pos-b" class="seg-btn on" onclick="setCapPos('b')">Bottom</button>
+      <button id="cap-pos-c" class="seg-btn" onclick="setCapPos('c')">Centre</button>
+    </div>
+    <label class="lbl">Theme</label>
+    <div id="cap-themes" class="themes"></div>
+    <label class="lbl">Text size</label>
+    <div class="seg">
+      <button id="cap-size-s" class="seg-btn" onclick="setCapSize('s')">Small</button>
+      <button id="cap-size-m" class="seg-btn on" onclick="setCapSize('m')">Medium</button>
+      <button id="cap-size-l" class="seg-btn" onclick="setCapSize('l')">Large</button>
+    </div>
+    <canvas id="cap-canvas" width="540" height="960"></canvas>
+    <div class="row">
+      <button class="btn" onclick="previewCaptions()">▶ Preview</button>
+      <button class="btn" onclick="stopPreview()">■ Stop</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="step">4 · Export video</div>
+    <button class="btn-primary" onclick="exportCaptions()">Export captioned video</button>
+    <div id="cap-export-status" class="info"></div>
+    <div class="row" id="cap-share-row" hidden>
+      <button class="btn" onclick="shareLast()">Share video</button>
+    </div>
+  </div>
+</main>
+
+<!-- ============ SCRIPT TO VIDEO ============ -->
+<main id="tool-script" class="screen">
+  <div class="tool-head"><button class="back" onclick="goHome()">‹</button><h2>Script to Video</h2></div>
+  <div class="card">
+    <div class="step">1 · Write your script</div>
+    <textarea id="scr-text" rows="5" placeholder="Type your script here…"></textarea>
+    <label class="lbl">Voice language</label>
+    <select id="scr-lang">
+      <option value="en-IN">English (India)</option>
+      <option value="hi-IN">Hindi</option>
+      <option value="ur-PK">Urdu</option>
+      <option value="en-US">English (US)</option>
+    </select>
+    <div class="row">
+      <button class="btn" onclick="previewVoice('scr')">🔊 Hear voice</button>
+      <button class="btn" onclick="makeScriptAudio()">1 · Make voice audio</button>
+    </div>
+    <div id="scr-audio-status" class="info"></div>
+  </div>
+  <div class="card">
+    <div class="step">2 · Style it</div>
+    <label class="lbl">Canvas</label>
+    <div class="seg">
+      <button id="scr-fmt-v" class="seg-btn on" onclick="setScrFormat('v')">Vertical 9:16</button>
+      <button id="scr-fmt-h" class="seg-btn" onclick="setScrFormat('h')">Landscape 16:9</button>
+    </div>
+    <label class="lbl">Theme</label>
+    <div id="scr-themes" class="themes"></div>
+    <canvas id="scr-canvas" width="540" height="960"></canvas>
+    <div class="row">
+      <button class="btn" onclick="previewScript()">▶ Preview</button>
+      <button class="btn" onclick="stopPreview()">■ Stop</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="step">3 · Export video</div>
+    <button class="btn-primary" onclick="exportScript()">Export video</button>
+    <div id="scr-export-status" class="info"></div>
+    <div class="row" id="scr-share-row" hidden>
+      <button class="btn" onclick="shareLast()">Share video</button>
+    </div>
+  </div>
+</main>
+
+<!-- ============ TEXT TO VOICE ============ -->
+<main id="tool-voice" class="screen">
+  <div class="tool-head"><button class="back" onclick="goHome()">‹</button><h2>Text to Voice</h2></div>
+  <div class="card">
+    <div class="step">Type it, save it as audio</div>
+    <textarea id="vox-text" rows="6" placeholder="Type anything — a story, a caption, a greeting…"></textarea>
+    <label class="lbl">Voice language</label>
+    <select id="vox-lang">
+      <option value="en-IN">English (India)</option>
+      <option value="hi-IN">Hindi</option>
+      <option value="ur-PK">Urdu</option>
+      <option value="en-US">English (US)</option>
+    </select>
+    <div class="row">
+      <button class="btn" onclick="previewVoice('vox')">🔊 Hear it</button>
+      <button class="btn-primary" onclick="saveVoice()">Save as audio (WAV)</button>
+    </div>
+    <div id="vox-status" class="info"></div>
+    <div class="row" id="vox-share-row" hidden>
+      <button class="btn" onclick="shareLast()">Share audio</button>
+    </div>
+  </div>
+</main>
+
+<!-- ============ AUDIO STUDIO ============ -->
+<main id="tool-audio" class="screen">
+  <div class="tool-head"><button class="back" onclick="goHome()">‹</button><h2>Audio Studio</h2></div>
+  <div class="card">
+    <div class="step">Import audio</div>
+    <input type="file" id="aud-file" accept="audio/*" hidden>
+    <button class="btn" onclick="document.getElementById('aud-file').click()">Pick audio (MP3 · WAV · M4A · AAC · FLAC)</button>
+    <div id="aud-info" class="info">No audio picked yet.</div>
+    <canvas id="aud-wave" width="640" height="120" style="width:100%;height:90px"></canvas>
+    <div class="row">
+      <button class="btn" onclick="audPlayPause()">▶ Play / Pause</button>
+      <button class="btn" onclick="audDetectBpm()">Detect BPM &amp; beats</button>
+    </div>
+    <div id="aud-bpm" class="info"></div>
+  </div>
+  <div class="card">
+    <div class="step">Trim</div>
+    <div class="row">
+      <label class="lbl">Start <span id="aud-start-lbl">0.0s</span></label>
+      <input type="range" id="aud-start" min="0" max="100" value="0" step="0.1" oninput="trimSlider()">
+      <label class="lbl">End <span id="aud-end-lbl">0.0s</span></label>
+      <input type="range" id="aud-end" min="0" max="100" value="100" step="0.1" oninput="trimSlider()">
+    </div>
+    <label class="lbl">Volume / gain</label>
+    <input type="range" id="aud-gain" min="0" max="200" value="100" oninput="$('aud-gain-lbl').textContent=this.value+'%'">
+    <div class="info">Gain: <span id="aud-gain-lbl">100%</span> — applied on export.</div>
+    <div class="row">
+      <label class="chk"><input type="checkbox" id="aud-fadein"> Fade in</label>
+      <label class="chk"><input type="checkbox" id="aud-fadeout"> Fade out</label>
+      <label class="chk"><input type="checkbox" id="aud-norm"> Normalize</label>
+    </div>
+    <label class="lbl">Speed</label>
+    <div class="seg">
+      <button class="seg-btn" onclick="setAudSpeed(0.5)">0.5×</button>
+      <button class="seg-btn on" onclick="setAudSpeed(1)">1×</button>
+      <button class="seg-btn" onclick="setAudSpeed(1.25)">1.25×</button>
+      <button class="seg-btn" onclick="setAudSpeed(1.5)">1.5×</button>
+      <button class="seg-btn" onclick="setAudSpeed(2)">2×</button>
+    </div>
+    <div class="row">
+      <button class="btn" onclick="exportTrim('wav')">Export trimmed (WAV)</button>
+      <button class="btn" onclick="exportTrim('mp3')">Export trimmed (MP3)</button>
+    </div>
+    <div id="aud-trim-status" class="info"></div>
+  </div>
+  <div class="card">
+    <div class="step">Merge two audios</div>
+    <input type="file" id="aud-file2" accept="audio/*" hidden>
+    <button class="btn" onclick="document.getElementById('aud-file2').click()">Pick second audio</button>
+    <div id="aud-info2" class="info">No second audio picked yet.</div>
+    <button class="btn-primary" onclick="exportMerge()">Merge &amp; export (WAV)</button>
+    <div id="aud-merge-status" class="info"></div>
+    <div class="row" id="aud-share-row" hidden>
+      <button class="btn" onclick="shareLast()">Share audio</button>
+    </div>
+  </div>
+</main>
+
+<!-- ============ AUTO LYRICS SYNC ============ -->
+<main id="tool-lyrics" class="screen">
+  <div class="tool-head"><button class="back" onclick="goHome()">‹</button><h2>Auto Lyrics Sync</h2></div>
+  <div class="card">
+    <div class="step">1 · Pick a song</div>
+    <input type="file" id="lyr-audio" accept="audio/*" hidden>
+    <button class="btn" onclick="document.getElementById('lyr-audio').click()">Pick song (MP3 · WAV · M4A · AAC · FLAC)</button>
+    <div id="lyr-audio-info" class="info">No song picked yet.</div>
+    <audio id="lyr-player" controls style="width:100%;display:none"></audio>
+  </div>
+  <div class="card">
+    <div class="step">2 · Lyrics</div>
+    <div class="seg">
+      <button id="lyr-mode-type" class="seg-btn on" onclick="setLyrMode('type')">Paste lyrics</button>
+      <button id="lyr-mode-live" class="seg-btn" onclick="setLyrMode('live')">Live transcribe (mic)</button>
+    </div>
+    <div id="lyr-type-box">
+      <textarea id="lyr-text" rows="6" placeholder="Paste the full lyrics here — one line per line…"></textarea>
+      <div class="row">
+        <input type="file" id="lyr-file" accept=".txt,.srt,.lrc" hidden>
+        <button class="btn" onclick="document.getElementById('lyr-file').click()">Import TXT / SRT / LRC</button>
+      </div>
+      <div class="hint">Hindi, English, Urdu or mixed — Devanagari, Roman and Arabic script all work. Urdu lines render right-to-left.</div>
+    </div>
+    <div id="lyr-live-box" hidden>
+      <button class="btn" id="lyr-stt-btn" onclick="toggleSttLyr()">🎙 Start listening</button>
+      <div id="lyr-stt-text" class="transcript"></div>
+    </div>
+    <label class="lbl">Language</label>
+    <select id="lyr-lang">
+      <option value="hi-IN-roman" selected>Hindi + English (Hinglish)</option>
+      <option value="hi-IN">Hindi (Devanagari)</option>
+      <option value="en-IN">English</option>
+      <option value="ur-PK">Urdu</option>
+      <option value="hi-IN-mix">Mixed Hindi + English + Urdu</option>
+    </select>
+  </div>
+  <div class="card">
+    <div class="step">3 · Sync — real audio alignment</div>
+    <div class="hint">Onset alignment listens to the actual vocal onsets in your song and snaps each word to the nearest detected onset — not equal spacing. Studio-grade word timing (WhisperX-style) needs a cloud model; use Manual Sync to fine-tune any word.</div>
+    <div class="row">
+      <button class="btn-primary" onclick="autoSyncLyrics()">Auto Sync</button>
+      <button class="btn" onclick="autoSyncLyrics()">Re-Sync Entire Song</button>
+    </div>
+    <div id="lyr-sync-status" class="info"></div>
+    <div class="meter"><i id="lyr-sync-bar" style="width:0%"></i></div>
+    <label class="lbl">Word timings — tap a word to correct it</label>
+    <div id="lyr-words" class="transcript" style="min-height:80px"></div>
+    <div class="row">
+      <button class="btn" onclick="previewSync()">▶ Preview Sync (karaoke)</button>
+      <button class="btn" onclick="stopPreview()">■ Stop</button>
+    </div>
+    <canvas id="lyr-canvas" width="540" height="960"></canvas>
+    <div class="row">
+      <button class="btn-primary" onclick="applySyncToTypography()">Apply to Typography Studio</button>
+    </div>
+    <div id="lyr-apply-status" class="info"></div>
+  </div>
+</main>
+
+<!-- ============ AI MASHUP STUDIO ============ -->
+<main id="tool-mashup" class="screen">
+  <div class="tool-head"><button class="back" onclick="goHome()">‹</button><h2>AI Mashup Studio</h2></div>
+  <div class="card">
+    <div class="step">Track A</div>
+    <input type="file" id="mash-a" accept="audio/*" hidden>
+    <button class="btn" onclick="document.getElementById('mash-a').click()">Pick song A</button>
+    <div id="mash-a-info" class="info">No song A yet.</div>
+    <label class="lbl">Track B</label>
+    <input type="file" id="mash-b" accept="audio/*" hidden>
+    <button class="btn" onclick="document.getElementById('mash-b').click()">Pick song B</button>
+    <div id="mash-b-info" class="info">No song B yet.</div>
+  </div>
+  <div class="card">
+    <div class="step">Match &amp; mix</div>
+    <div class="row">
+      <button class="btn" onclick="mashDetect()">Detect BPM (both)</button>
+      <button class="btn" onclick="mashMatchTempo()">Match tempo</button>
+    </div>
+    <div id="mash-bpm" class="info"></div>
+    <label class="lbl">Crossfade (seconds)</label>
+    <input type="range" id="mash-xfade" min="0" max="10" value="3" step="0.5" oninput="$('mash-xfade-lbl').textContent=this.value+'s'">
+    <div class="info">Crossfade: <span id="mash-xfade-lbl">3s</span></div>
+    <label class="lbl">Mix balance A ↔ B</label>
+    <input type="range" id="mash-bal" min="0" max="100" value="50" oninput="$('mash-bal-lbl').textContent='A '+this.value+'% / B '+(100-this.value)+'%'">
+    <div class="info"><span id="mash-bal-lbl">A 50% / B 50%</span></div>
+    <div class="row">
+      <button class="btn" onclick="mashPreview()">▶ Preview mix</button>
+      <button class="btn" onclick="stopPreview()">■ Stop</button>
+    </div>
+    <button class="btn-primary" onclick="mashExport()">Export mashup (WAV)</button>
+    <div id="mash-status" class="info"></div>
+    <div class="row" id="mash-share-row" hidden>
+      <button class="btn" onclick="shareLast()">Share mashup</button>
+    </div>
+  </div>
+</main>
+
+<!-- ============ VIDEO EDITOR ============ -->
+<main id="tool-video" class="screen">
+  <div class="tool-head"><button class="back" onclick="goHome()">‹</button><h2>Video Editor</h2></div>
+  <div class="card">
+    <div class="step">1 · Pick a video</div>
+    <input type="file" id="ved-file" accept="video/*" hidden>
+    <button class="btn" onclick="document.getElementById('ved-file').click()">Pick video</button>
+    <div id="ved-info" class="info">No video picked yet.</div>
+    <video id="ved-player" controls playsinline style="width:100%;display:none"></video>
+  </div>
+  <div class="card">
+    <div class="step">2 · Trim &amp; speed</div>
+    <label class="lbl">Trim start <span id="ved-start-lbl">0.0s</span></label>
+    <input type="range" id="ved-start" min="0" max="100" value="0" step="0.1" oninput="vedTrimSlider()">
+    <label class="lbl">Trim end <span id="ved-end-lbl">0.0s</span></label>
+    <input type="range" id="ved-end" min="0" max="100" value="100" step="0.1" oninput="vedTrimSlider()">
+    <label class="lbl">Speed</label>
+    <div class="seg">
+      <button class="seg-btn" onclick="setVedSpeed(0.5)">0.5×</button>
+      <button class="seg-btn on" onclick="setVedSpeed(1)">1×</button>
+      <button class="seg-btn" onclick="setVedSpeed(1.5)">1.5×</button>
+      <button class="seg-btn" onclick="setVedSpeed(2)">2×</button>
+    </div>
+    <label class="lbl">Filter</label>
+    <select id="ved-filter" onchange="vedPreviewFilter()">
+      <option value="none">None</option>
+      <option value="warm">Warm</option>
+      <option value="cool">Cool</option>
+      <option value="bw">Black &amp; white</option>
+      <option value="vivid">Vivid</option>
+      <option value="vintage">Vintage</option>
+    </select>
+    <label class="lbl">Captions on video (optional)</label>
+    <textarea id="ved-words" rows="3" placeholder="Type words to burn onto the video…"></textarea>
+  </div>
+  <div class="card">
+    <div class="step">3 · Export</div>
+    <label class="lbl">Format</label>
+    <div class="seg">
+      <button id="ved-fmt-v" class="seg-btn on" onclick="setVedFormat('v')">Vertical 9:16</button>
+      <button id="ved-fmt-h" class="seg-btn" onclick="setVedFormat('h')">Landscape 16:9</button>
+      <button id="ved-fmt-s" class="seg-btn" onclick="setVedFormat('s')">Square 1:1</button>
+    </div>
+    <label class="lbl">Resolution</label>
+    <div class="seg">
+      <button id="ved-res-720" class="seg-btn" onclick="setVedRes('720')">720p</button>
+      <button id="ved-res-1080" class="seg-btn on" onclick="setVedRes('1080')">1080p</button>
+      <button id="ved-res-4k" class="seg-btn" onclick="setVedRes('4k')">4K</button>
+    </div>
+    <div class="hint">4K where your device and codec support it — slower and heavier. Falls back to 1080p if 4K is not supported.</div>
+    <button class="btn-primary" onclick="exportVideoEdit()">Export video</button>
+    <div id="ved-status" class="info"></div>
+    <div class="row" id="ved-share-row" hidden>
+      <button class="btn" onclick="shareLast()">Share video</button>
+    </div>
+  </div>
+</main>
+
+<!-- ============ EMOJI STUDIO ============ -->
+<main id="tool-emoji" class="screen">
+  <div class="tool-head"><button class="back" onclick="goHome()">‹</button><h2>Emoji Studio</h2></div>
+  <div class="card">
+    <div class="step">Mood-matched emojis for your lyrics</div>
+    <textarea id="emo-text" rows="5" placeholder="Paste your lyrics here — emojis are suggested per line from the words and mood…"></textarea>
+    <div class="row">
+      <button class="btn-primary" onclick="suggestEmojis()">Suggest emojis</button>
+    </div>
+    <div id="emo-result" style="margin-top:12px"></div>
+    <div class="hint">Detection is on-device keyword + mood analysis of your lyrics — no cloud AI. Tap a suggested emoji to copy it.</div>
+  </div>
+  <div class="card">
+    <div class="step">Emoji overlay on your typography video</div>
+    <label class="lbl">Emoji to show</label>
+    <input type="text" id="emo-overlay-text" value="❤️" maxlength="4">
+    <label class="lbl">Size</label>
+    <input type="range" id="emo-size" min="20" max="160" value="80">
+    <label class="lbl">Position</label>
+    <div class="seg">
+      <button class="seg-btn on" onclick="setEmoPos('top')">Top</button>
+      <button class="seg-btn" onclick="setEmoPos('mid')">Middle</button>
+      <button class="seg-btn" onclick="setEmoPos('bot')">Bottom</button>
+    </div>
+    <div class="row">
+      <button class="btn" onclick="previewEmojiOverlay()">Preview on canvas</button>
+    </div>
+    <canvas id="emo-canvas" width="540" height="960"></canvas>
+    <div class="hint">The emoji overlay is drawn into Typography Studio exports when enabled here.</div>
+  </div>
+</main>
+
+<!-- ============ GIF STUDIO ============ -->
+<main id="tool-gif" class="screen">
+  <div class="tool-head"><button class="back" onclick="goHome()">‹</button><h2>GIF Studio</h2></div>
+  <div class="card">
+    <div class="step">Local GIF overlays</div>
+    <input type="file" id="gif-file" accept="image/gif" hidden>
+    <button class="btn" onclick="document.getElementById('gif-file').click()">Import local GIF</button>
+    <div id="gif-info" class="info">No GIF imported yet. GIF search needs a provider key in RUH AI Gateway — no fake results are shown without one.</div>
+    <img id="gif-preview" style="width:100%;border-radius:12px;display:none;margin-top:10px">
+    <label class="lbl">Overlay size</label>
+    <input type="range" id="gif-size" min="10" max="100" value="40" oninput="$('gif-size-lbl').textContent=this.value+'%'">
+    <div class="info">Size: <span id="gif-size-lbl">40%</span> of canvas width</div>
+    <label class="lbl">Opacity</label>
+    <input type="range" id="gif-op" min="10" max="100" value="100" oninput="$('gif-op-lbl').textContent=this.value+'%'">
+    <div class="info">Opacity: <span id="gif-op-lbl">100%</span></div>
+    <div class="row">
+      <button class="btn" onclick="previewGifOverlay()">Preview on canvas</button>
+      <button class="btn" onclick="clearGif()">Remove GIF</button>
+    </div>
+    <canvas id="gif-canvas" width="540" height="960"></canvas>
+  </div>
+</main>
+
+<!-- ============ AI VISUAL GENERATOR ============ -->
+<main id="tool-visual" class="screen">
+  <div class="tool-head"><button class="back" onclick="goHome()">‹</button><h2>AI Visual Generator</h2></div>
+  <div class="card">
+    <div class="step">Mood visual — generated on-device</div>
+    <div class="hint">Backgrounds, particles and the music visualizer are generated on your device from the song mood — no cloud needed. Image/video generation needs a provider key in RUH AI Gateway.</div>
+    <label class="lbl">Mood</label>
+    <div id="vis-moods"></div>
+    <label class="lbl">Your own background (optional)</label>
+    <input type="file" id="vis-file" accept="image/*,video/*" hidden>
+    <button class="btn" onclick="document.getElementById('vis-file').click()">Upload image / video background</button>
+    <div id="vis-info" class="info">No upload yet — mood background is used.</div>
+    <div class="row">
+      <button class="btn" onclick="visPreview(false)">Preview visual</button>
+      <button class="btn" onclick="visPreview(true)">▶ Visualizer with audio</button>
+      <button class="btn" onclick="stopPreview()">■ Stop</button>
+    </div>
+    <canvas id="vis-canvas" width="540" height="960"></canvas>
+    <div class="row">
+      <button class="btn-primary" onclick="applyVisualToTypography()">Use as Typography background</button>
+    </div>
+    <div id="vis-apply-status" class="info"></div>
+  </div>
+</main>
+
+<!-- ============ TEMPLATES LIBRARY ============ -->
+<main id="tool-templates" class="screen">
+  <div class="tool-head"><button class="back" onclick="goHome()">‹</button><h2>Templates Library</h2></div>
+  <div class="card">
+    <div class="step">Real templates — tap one to apply it in Typography Studio</div>
+    <div id="tpl-list"></div>
+    <div class="hint">Every template below is a real, working style preset (theme + effect + layout + font). More are added over time — nothing here is a placeholder.</div>
+  </div>
+</main>
+
+<!-- ============ AI ASSISTANT ============ -->
+<main id="tool-assistant" class="screen">
+  <div class="tool-head"><button class="back" onclick="goHome()">‹</button><h2>AI Assistant</h2></div>
+  <div class="card">
+    <div class="step">Tell it what to do — it runs real app functions</div>
+    <div class="chat-b" id="asst-chat"></div>
+    <div class="row">
+      <input type="text" id="asst-input" placeholder="e.g. Make the text green…" style="flex:1">
+      <button class="btn-primary" onclick="askAssistant()">Send</button>
+    </div>
+    <div class="hint">Try: “make the text green” · “apply a sad typography style” · “add romantic emojis” · “match animations with beats” · “export in 1080p”. The assistant only reports success when the action actually ran.</div>
+  </div>
+</main>
+
+<!-- ============ RUH AI GATEWAY ============ -->
+<main id="tool-gateway" class="screen">
+  <div class="tool-head"><button class="back" onclick="goHome()">‹</button><h2>RUH AI Gateway</h2></div>
+  <div class="card">
+    <div class="step">Your providers — your keys, on your device</div>
+    <div class="hint">Keys are stored only on this device and are never sent anywhere except the provider you choose. No key is ever hardcoded in the app. Remove a key any time.</div>
+    <label class="lbl">Provider</label>
+    <select id="gw-provider">
+      <option value="groq">Groq</option>
+      <option value="gemini">Google Gemini</option>
+      <option value="openai">OpenAI</option>
+      <option value="mistral">Mistral</option>
+      <option value="openrouter">OpenRouter</option>
+      <option value="cloudflare">Cloudflare AI</option>
+      <option value="nvidia">NVIDIA NIM</option>
+    </select>
+    <label class="lbl">API key</label>
+    <input type="password" id="gw-key" placeholder="Paste your API key here">
+    <label class="lbl">Model (optional)</label>
+    <input type="text" id="gw-model" placeholder="e.g. llama-3.3-70b-versatile">
+    <div class="row">
+      <button class="btn-primary" onclick="gwSave()">Save key</button>
+      <button class="btn" onclick="gwTest()">Test connection</button>
+      <button class="btn" onclick="gwRemove()">Remove key</button>
+    </div>
+    <div id="gw-status" class="info"></div>
+  </div>
+  <div class="card">
+    <div class="step">Saved providers</div>
+    <div id="gw-list"></div>
+  </div>
+</main>
+
+<!-- ============ MY PROJECTS ============ -->
+<main id="tool-projects" class="screen">
+  <div class="tool-head"><button class="back" onclick="goHome()">‹</button><h2>My Projects</h2></div>
+  <div class="card">
+    <div class="row">
+      <button class="btn-primary" onclick="newProject()">＋ New Project</button>
+      <button class="btn" onclick="exportProjectFile()">Backup (export file)</button>
+      <input type="file" id="proj-import" accept=".json" hidden>
+      <button class="btn" onclick="document.getElementById('proj-import').click()">Restore (import file)</button>
+    </div>
+  </div>
+  <div id="proj-list"></div>
+</main>
+
+<!-- ============ EXPORT HISTORY ============ -->
+<main id="tool-history" class="screen">
+  <div class="tool-head"><button class="back" onclick="goHome()">‹</button><h2>Export History</h2></div>
+  <div id="hist-list"></div>
+  <div class="card">
+    <button class="btn" onclick="clearHistory()">Clear history</button>
+  </div>
+</main>
+
+<!-- ============ SETTINGS ============ -->
+<main id="tool-settings" class="screen">
+  <div class="tool-head"><button class="back" onclick="goHome()">‹</button><h2>Settings</h2></div>
+  <div class="card">
+    <div class="step">Language</div>
+    <select id="set-lang" onchange="setAppLang(this.value)">
+      <option value="en" selected>English</option>
+      <option value="hi">हिन्दी</option>
+      <option value="ur">اردو</option>
+    </select>
+    <div class="step" style="margin-top:16px">Export defaults</div>
+    <label class="lbl">Default resolution</label>
+    <div class="seg">
+      <button class="seg-btn" onclick="setDefaultRes('720')">720p</button>
+      <button class="seg-btn on" onclick="setDefaultRes('1080')">1080p</button>
+      <button class="seg-btn" onclick="setDefaultRes('4k')">4K</button>
+    </div>
+    <div class="step" style="margin-top:16px">Storage</div>
+    <div class="kv"><span>Saved projects</span><b id="set-proj-count">0</b></div>
+    <div class="kv"><span>Export history</span><b id="set-hist-count">0</b></div>
+    <div class="row">
+      <button class="btn" onclick="clearCache()">Clear cache</button>
+    </div>
+    <div id="set-status" class="info"></div>
+  </div>
+  <div class="card">
+    <div class="step">About</div>
+    <div class="kv"><span>App</span><b>Ruh Typography Studio</b></div>
+    <div class="kv"><span>Version</span><b>1.0</b></div>
+    <div class="kv"><span>Creator</span><b class="gold">Hasnain Khan</b></div>
+    <div class="kv"><span>Instagram</span><b>@ruhvibes1</b></div>
+    <div class="hint">Free forever · No login · No subscription. Your files stay on your device. AI features run on-device unless you add your own provider key in RUH AI Gateway.</div>
+  </div>
+</main>
+
+<div id="toast"></div>
+<script src="js/lame.min.js"></script>
+<script src="js/app.js"></script>
+<script src="js/app2.js"></script>
+</body>
+</html>
